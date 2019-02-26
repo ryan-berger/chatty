@@ -1,15 +1,16 @@
 package repositories
 
-import "github.com/ryan-berger/chatty/repositories/models"
-
+// MessageRepo is a way for the connection manager to store messages
 type MessageRepo interface {
-	CreateMessage(message models.Message) (*models.Message, error)
+	CreateMessage(message Message) (*Message, error)
 }
 
+// MockMessageRepo is a MessageRepo implementation for testing
 type MockMessageRepo struct {
-	Create func(message models.Message) (*models.Message, error)
+	Create func(message Message) (*Message, error)
 }
 
-func (mock *MockMessageRepo) CreateMessage(message models.Message) (*models.Message, error) {
+// CreateMessage calls the Create method in the MockMessageRepo
+func (mock *MockMessageRepo) CreateMessage(message Message) (*Message, error) {
 	return mock.Create(message)
 }

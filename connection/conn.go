@@ -1,10 +1,10 @@
 package connection
 
-import "github.com/ryan-berger/chatty/repositories/models"
+import "github.com/ryan-berger/chatty/repositories"
 
 type Conn interface {
 	Authorize() error
-	GetConversant() models.Conversant
+	GetConversant() repositories.Conversant
 	Requests() chan Request
 	Response() chan Response
 	Leave() chan struct{}
@@ -12,7 +12,7 @@ type Conn interface {
 
 type MockConn struct {
 	Auth       func() error
-	Conversant func() models.Conversant
+	Conversant func() repositories.Conversant
 	Request    func() chan Request
 	Resp       func() chan Response
 	Leaver     func() chan struct{}
@@ -34,6 +34,6 @@ func (mock *MockConn) Leave() chan struct{} {
 	return mock.Leaver()
 }
 
-func (mock *MockConn) GetConversant() models.Conversant {
+func (mock *MockConn) GetConversant() repositories.Conversant {
 	return mock.Conversant()
 }

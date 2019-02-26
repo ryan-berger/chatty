@@ -5,18 +5,17 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/ryan-berger/chatty/repositories"
-	"github.com/ryan-berger/chatty/repositories/models"
 )
 
-const CREATECONVERSATION = `
+const createConversation = `
 INSERT INTO conversation(id, name, direct) VALUES (:id, :name, :direct)
 `
 
-const CREATECONVERSANTCONVERSATION = `
+const createConversantConversation = `
 INSERT INTO conversant_conversation(conversation_id, conversant_id) VALUES ($1, $2)
 `
 
-const GETUSERSFROMCONVESRATION = `
+const getUsersFromConversation = `
 SELECT
     id,
 	external_id
@@ -25,7 +24,7 @@ LEFT JOIN conversant c on cc.conversant_id = c.id
 WHERE conversation_id = $1
 `
 
-const GETCONVERSATIONMESSAGES = `
+const getConversationMessages = `
 SELECT
 	m.id,
     m.sender,
@@ -35,25 +34,29 @@ WHERE m.conversation = $1
 LIMIT $2 OFFSET $3
 `
 
+// ConversationRepository is an implementation of ConversationRepo
+// that uses Postgres as it's backend
 type ConversationRepository struct {
 	db *sqlx.DB
 }
 
-func (repo *ConversationRepository) CreateConversation(conversation models.Conversation) (*models.Conversation, error) {
+// CreateConversation creates a conversation with a postgres transaction. If any of it fails, it
+// rolls back or returns an error
+func (repo *ConversationRepository) CreateConversation(conversation repositories.Conversation) (*repositories.Conversation, error) {
 	tx, err := repo.db.Beginx()
 	if err != nil {
 		return nil, err
 	}
 
-	conversation.Id = uuid.New()
+	conversation.ID = uuid.New()
 	conversation.Direct = len(conversation.Conversants) == 2
-	_, err = tx.NamedExec(CREATECONVERSATION, &conversation)
+	_, err = tx.NamedExec(createConversation, &conversation)
 	if err != nil {
 		tx.Rollback()
 		return nil, errors.Wrap(err, "err: creating conversation")
 	}
 
-	err = addConversants(tx, conversation.Id, conversation.Conversants)
+	err = addConversants(tx, conversation.ID, conversation.Conversants)
 	if err != nil {
 		return nil, errors.Wrap(err, "err: Adding Conversants")
 	}
@@ -66,9 +69,9 @@ func (repo *ConversationRepository) CreateConversation(conversation models.Conve
 	return &conversation, nil
 }
 
-func addConversants(tx *sqlx.Tx, conversationId string, conversants []models.Conversant) error {
+func addConversants(tx *sqlx.Tx, conversationID string, conversants []repositories.Conversant) error {
 	for _, conversant := range conversants {
-		_, err := tx.Exec(CREATECONVERSANTCONVERSATION, &conversationId, &conversant.Id)
+		_, err := tx.Exec(createConversantConversation, &conversationID, &conversant.ID)
 
 		if err != nil {
 			tx.Rollback()
@@ -78,21 +81,22 @@ func addConversants(tx *sqlx.Tx, conversationId string, conversants []models.Con
 	return nil
 }
 
-func (repo *ConversationRepository) RetrieveConversation(conversationId string, limit, offset int) (*models.Conversation, error) {
-	var conversation models.Conversation
+// RetrieveConversation grabs a conversation with the messages given a limit and offset
+func (repo *ConversationRepository) RetrieveConversation(conversationID string, limit, offset int) (*repositories.Conversation, error) {
+	var conversation repositories.Conversation
 
-	err := repo.db.Get(&conversation, CREATECONVERSANTCONVERSATION)
+	err := repo.db.Get(&conversation, createConversantConversation)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = repo.db.Select(&(conversation.Conversants), GETUSERSFROMCONVESRATION, &conversationId)
+	err = repo.db.Select(&(conversation.Conversants), getUsersFromConversation, &conversationID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = repo.db.Get(&(conversation.Messages), GETCONVERSATIONMESSAGES, &conversationId, &limit, &offset)
+	err = repo.db.Get(&(conversation.Messages), getConversationMessages, &conversationID, &limit, &offset)
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +104,10 @@ func (repo *ConversationRepository) RetrieveConversation(conversationId string, 
 	return &conversation, nil
 }
 
-func (repo *ConversationRepository) GetConversants(conversationId string) ([]models.Conversant, error) {
-	var conversants []models.Conversant
-	err := repo.db.Select(&conversants, GETUSERSFROMCONVESRATION, &conversationId)
+// GetConversants gets the conversants for a given conversation
+func (repo *ConversationRepository) GetConversants(conversationID string) ([]repositories.Conversant, error) {
+	var conversants []repositories.Conversant
+	err := repo.db.Select(&conversants, getUsersFromConversation, &conversationID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +115,8 @@ func (repo *ConversationRepository) GetConversants(conversationId string) ([]mod
 	return conversants, nil
 }
 
-func NewConversationRepository(db *sqlx.DB) repositories.ConversationRepo {
+// NewConversationRepository creates a Postgres instance of a ConversationRepo
+func NewConversationRepository(db *sqlx.DB) *ConversationRepository {
 	return &ConversationRepository{
 		db: db,
 	}

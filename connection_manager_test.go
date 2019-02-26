@@ -1,12 +1,13 @@
-package manager
+package chatty
 
 import (
+	"testing"
+	"time"
+
 	"github.com/ryan-berger/chatty/manager/connection"
 	"github.com/ryan-berger/chatty/manager/operators"
 	"github.com/ryan-berger/chatty/repositories"
 	"github.com/ryan-berger/chatty/repositories/models"
-	"testing"
-	"time"
 )
 
 type testData struct {

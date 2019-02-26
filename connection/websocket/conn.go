@@ -1,35 +1,39 @@
-package impl
+package websocket
 
 import (
+	"time"
+
+	"github.com/ryan-berger/chatty/repositories"
+
+	"github.com/ryan-berger/chatty/connection"
+
 	"github.com/gorilla/websocket"
 	"github.com/pborman/uuid"
-	"github.com/ryan-berger/chatty/manager/connection"
-	"github.com/ryan-berger/chatty/repositories/models"
-	"time"
 )
 
-type RequestType string
+type requestType string
 
 const (
-	SendMessage        RequestType = "sendMessage"
-	CreateConversation RequestType = "CreateConversation"
+	sendMessage        requestType = "sendMessage"
+	createConversation requestType = "createConversation"
 )
 
-var stringToType = map[RequestType]connection.RequestType{
-	SendMessage:        connection.SendMessage,
-	CreateConversation: connection.CreateConversation,
+var stringToType = map[requestType]connection.RequestType{
+	sendMessage:        connection.SendMessage,
+	createConversation: connection.CreateConversation,
 }
 
-type wsConn struct {
+// Conn is a websocket implementation of the Conn interface
+type Conn struct {
 	conn       *websocket.Conn
-	conversant models.Conversant
+	conversant repositories.Conversant
 	leave      chan struct{}
 	requests   chan connection.Request
 	responses  chan connection.Response
 }
 
 type wsRequest struct {
-	RequestType RequestType
+	RequestType requestType
 	Data        interface{}
 }
 
@@ -44,9 +48,10 @@ func wsRequestToRequest(request wsRequest) connection.Request {
 	return req
 }
 
-func newWsConn(conn *websocket.Conn) wsConn {
-	wsConn := wsConn{
-		conversant: models.Conversant{Id: uuid.New()},
+// NewWebsocketConn is a factory for a websocket connection
+func NewWebsocketConn(conn *websocket.Conn) Conn {
+	wsConn := Conn{
+		conversant: repositories.Conversant{ID: uuid.New()},
 		conn:       conn,
 		leave:      make(chan struct{}, 1),
 		requests:   make(chan connection.Request),
@@ -55,7 +60,7 @@ func newWsConn(conn *websocket.Conn) wsConn {
 	return wsConn
 }
 
-func (conn wsConn) pumpIn() {
+func (conn Conn) pumpIn() {
 	for {
 		select {
 		case <-conn.leave:
@@ -67,7 +72,7 @@ func (conn wsConn) pumpIn() {
 	}
 }
 
-func (conn wsConn) pumpOut() {
+func (conn Conn) pumpOut() {
 	for {
 		select {
 		case <-conn.leave:
@@ -79,7 +84,7 @@ func (conn wsConn) pumpOut() {
 	}
 }
 
-func (conn wsConn) send(response connection.Response) {
+func (conn Conn) send(response connection.Response) {
 	conn.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	err := conn.conn.WriteJSON(&response)
 	if err != nil {
@@ -87,7 +92,7 @@ func (conn wsConn) send(response connection.Response) {
 	}
 }
 
-func (conn wsConn) receive() {
+func (conn Conn) receive() {
 	var req wsRequest
 	conn.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	err := conn.conn.ReadJSON(&req)
@@ -97,7 +102,8 @@ func (conn wsConn) receive() {
 	conn.requests <- wsRequestToRequest(req)
 }
 
-func (conn wsConn) Authorize() error {
+// Authorize satisfies the Conn interface
+func (conn Conn) Authorize() error {
 	err := conn.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		conn.conn.Close()
@@ -116,18 +122,22 @@ func (conn wsConn) Authorize() error {
 	return nil
 }
 
-func (conn wsConn) GetConversant() models.Conversant {
+// GetConversant satisfies the Conn interface
+func (conn Conn) GetConversant() repositories.Conversant {
 	return conn.conversant
 }
 
-func (conn wsConn) Requests() chan connection.Request {
+// Requests satisfies the Conn interface
+func (conn Conn) Requests() chan connection.Request {
 	return conn.requests
 }
 
-func (conn wsConn) Response() chan connection.Response {
+// Response satisfies the Conn interface
+func (conn Conn) Response() chan connection.Response {
 	return conn.responses
 }
 
-func (conn wsConn) Leave() chan struct{} {
+// Leave satisfies the Conn interface
+func (conn Conn) Leave() chan struct{} {
 	return conn.leave
 }
