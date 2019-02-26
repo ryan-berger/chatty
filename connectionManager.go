@@ -17,8 +17,8 @@ type messageRequest struct {
 	data repositories.Message
 }
 
-// Manager is the main connection manager struct that handles all chat connections
-type Manager struct {
+// ConnectionManager is the main connection manager struct that handles all chat connections
+type ConnectionManager struct {
 	auther         operators.Auther
 	connectionMu   *sync.RWMutex
 	connections    map[string]connection.Conn
@@ -33,9 +33,9 @@ func NewManager(
 	messageRepo repositories.MessageRepo,
 	conversationRepo repositories.ConversationRepo,
 	auther operators.Auther,
-	notifier operators.Notifier) *Manager {
+	notifier operators.Notifier) *ConnectionManager {
 
-	manager := &Manager{
+	manager := &ConnectionManager{
 		auther:         auther,
 		connectionMu:   &sync.RWMutex{},
 		connections:    make(map[string]connection.Conn),
@@ -48,18 +48,18 @@ func NewManager(
 	return manager
 }
 
-func (manager *Manager) startup() {
+func (manager *ConnectionManager) startup() {
 	for i := 0; i < numWorkers; i++ {
 		go manager.startMessageWorker()
 	}
 }
 
-func (manager *Manager) shutdown() {
+func (manager *ConnectionManager) shutdown() {
 	manager.shutdownChan <- struct{}{}
 }
 
 // Join authorizes a connection and then joins the server
-func (manager *Manager) Join(conn connection.Conn) {
+func (manager *ConnectionManager) Join(conn connection.Conn) {
 	if err := conn.Authorize(); err != nil {
 		return
 	}
@@ -67,7 +67,7 @@ func (manager *Manager) Join(conn connection.Conn) {
 	manager.addConn(conn)
 }
 
-func (manager *Manager) addConn(conn connection.Conn) {
+func (manager *ConnectionManager) addConn(conn connection.Conn) {
 	fmt.Println("joining")
 	manager.connectionMu.Lock()
 	manager.connections[conn.GetConversant().ID] = conn
@@ -75,11 +75,11 @@ func (manager *Manager) addConn(conn connection.Conn) {
 	manager.connectionMu.Unlock()
 }
 
-func (manager *Manager) closeConn(conn connection.Conn) {
+func (manager *ConnectionManager) closeConn(conn connection.Conn) {
 	conn.Leave() <- struct{}{}
 }
 
-func (manager *Manager) handleConnection(conn connection.Conn) {
+func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 	for {
 		select {
 		case command := <-conn.Requests():
@@ -98,7 +98,7 @@ func (manager *Manager) handleConnection(conn connection.Conn) {
 	}
 }
 
-func (manager *Manager) sendMessage(conn connection.Conn, m repositories.Message) {
+func (manager *ConnectionManager) sendMessage(conn connection.Conn, m repositories.Message) {
 	for {
 		select {
 		case manager.messageChan <- messageRequest{conn: conn, data: m}:
@@ -109,11 +109,11 @@ func (manager *Manager) sendMessage(conn connection.Conn, m repositories.Message
 	}
 }
 
-func (manager *Manager) createConversation(conversation repositories.Conversation) {
+func (manager *ConnectionManager) createConversation(conversation repositories.Conversation) {
 
 }
 
-func (manager *Manager) startMessageWorker() {
+func (manager *ConnectionManager) startMessageWorker() {
 	for {
 		select {
 		case message := <-manager.messageChan:
@@ -145,7 +145,7 @@ func (manager *Manager) startMessageWorker() {
 	}
 }
 
-func (manager *Manager) notifyRecipients(conversants []repositories.Conversant, message repositories.Message) {
+func (manager *ConnectionManager) notifyRecipients(conversants []repositories.Conversant, message repositories.Message) {
 	manager.connectionMu.RLock()
 	for _, conversant := range conversants {
 		if val, ok := manager.connections[conversant.ID]; ok {
@@ -157,11 +157,11 @@ func (manager *Manager) notifyRecipients(conversants []repositories.Conversant, 
 	manager.connectionMu.RUnlock()
 }
 
-func (manager *Manager) sendNewMessage(conn connection.Conn, message repositories.Message) {
+func (manager *ConnectionManager) sendNewMessage(conn connection.Conn, message repositories.Message) {
 
 }
 
-func (manager *Manager) sendErr(conn connection.Conn, errString string) {
+func (manager *ConnectionManager) sendErr(conn connection.Conn, errString string) {
 	manager.connectionMu.RLock()
 	conn.Response() <- connection.NewResponseError(errString)
 	manager.connectionMu.RUnlock()

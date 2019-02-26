@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryan-berger/chatty/manager/connection"
-	"github.com/ryan-berger/chatty/manager/operators"
+	"github.com/ryan-berger/chatty/connection"
+	"github.com/ryan-berger/chatty/operators"
+
 	"github.com/ryan-berger/chatty/repositories"
-	"github.com/ryan-berger/chatty/repositories/models"
 )
 
 type testData struct {
 	*repositories.MockConversationRepo
 	*repositories.MockMessageRepo
-	*connection.MockAuther
+	*operators.MockAuther
 	*operators.MockNotifier
 }
 
@@ -21,16 +21,16 @@ func newTestData() *testData {
 	return &testData{
 		&repositories.MockConversationRepo{},
 		&repositories.MockMessageRepo{},
-		&connection.MockAuther{},
+		&operators.MockAuther{},
 		&operators.MockNotifier{},
 	}
 }
 
 func makeConn(id string) *connection.MockConn {
 	mockConn := &connection.MockConn{}
-	mockConn.Conversant = func() models.Conversant {
-		return models.Conversant{
-			Id: id,
+	mockConn.Conversant = func() repositories.Conversant {
+		return repositories.Conversant{
+			ID: id,
 		}
 	}
 	mockConn.Request = func() chan connection.Request {
@@ -49,7 +49,7 @@ func inMemoryMockCons(sender chan struct{}) (conn1, conn2 *connection.MockConn) 
 	mockConn2.Request = func() chan connection.Request {
 		<-sender
 		req := make(chan connection.Request, 1)
-		req <- connection.Request{Type: connection.SendMessage, Data: models.Message{Message: "Hi"}}
+		req <- connection.Request{Type: connection.SendMessage, Data: repositories.Message{Message: "Hi"}}
 		return req
 	}
 
@@ -61,18 +61,17 @@ func TestManager_NotifyInMemory(t *testing.T) {
 	messageRepo := td.MockMessageRepo
 	convoRepo := td.MockConversationRepo
 
-	messageRepo.Create = func(message models.Message) (message2 *models.Message, e error) {
+	messageRepo.Create = func(message repositories.Message) (message2 *repositories.Message, e error) {
 		return &message, nil
 	}
 
-	convoRepo.GetConvo = func(conversationId string) (conversants []models.Conversant, e error) {
-		return []models.Conversant{
-			{Id: "a"},
+	convoRepo.GetConvo = func(conversationId string) (conversants []repositories.Conversant, e error) {
+		return []repositories.Conversant{
+			{ID: "a"},
 		}, nil
 	}
 
-	manager := NewManager(
-		repositories.NewChatInteractor(td, td), td, td)
+	manager := NewManager(td, td, td, td)
 
 	sender := make(chan struct{})
 	conn1, conn2 := inMemoryMockCons(sender)
@@ -102,7 +101,7 @@ func TestManager_NotifyInMemory(t *testing.T) {
 
 func TestManager_Leave(t *testing.T) {
 	td := newTestData()
-	manager := NewManager(repositories.NewChatInteractor(td, td), td, td)
+	manager := NewManager(td, td, td, td)
 
 	conn1 := makeConn("a")
 

@@ -54,7 +54,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func serveWs(manager *chatty.Manager, writer http.ResponseWriter, request *http.Request) {
+func serveWs(manager *chatty.ConnectionManager, writer http.ResponseWriter, request *http.Request) {
 	conn, err := upgrader.Upgrade(writer, request, nil)
 
 	fmt.Println("upgrade")
