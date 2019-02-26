@@ -25,4 +25,3 @@ func (m *MockConversationRepo) RetrieveConversation(conversationId string, limit
 func (m *MockConversationRepo) GetConversants(conversationId string) ([]models.Conversant, error) {
 	return m.GetConvo(conversationId)
 }
-

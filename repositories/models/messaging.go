@@ -1,8 +1,8 @@
 package models
 
 type Conversant struct {
-	Id         string
-	Name       string
+	Id   string
+	Name string
 }
 
 type Message struct {

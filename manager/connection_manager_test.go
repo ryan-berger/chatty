@@ -18,18 +18,18 @@ type testData struct {
 
 func newTestData() *testData {
 	return &testData{
-		 &repositories.MockConversationRepo{},
+		&repositories.MockConversationRepo{},
 		&repositories.MockMessageRepo{},
-		 &connection.MockAuther{},
-		 &operators.MockNotifier{},
+		&connection.MockAuther{},
+		&operators.MockNotifier{},
 	}
 }
 
-func makeConn(id string) *connection.MockConn  {
+func makeConn(id string) *connection.MockConn {
 	mockConn := &connection.MockConn{}
 	mockConn.Conversant = func() models.Conversant {
 		return models.Conversant{
-			Id:id,
+			Id: id,
 		}
 	}
 	mockConn.Request = func() chan connection.Request {
@@ -41,12 +41,12 @@ func makeConn(id string) *connection.MockConn  {
 	return mockConn
 }
 
-func inMemoryMockCons(sender chan struct{}) (conn1, conn2 *connection.MockConn)  {
+func inMemoryMockCons(sender chan struct{}) (conn1, conn2 *connection.MockConn) {
 	mockConn1 := makeConn("a")
 	mockConn2 := makeConn("b")
 
 	mockConn2.Request = func() chan connection.Request {
-		<- sender
+		<-sender
 		req := make(chan connection.Request, 1)
 		req <- connection.Request{Type: connection.SendMessage, Data: models.Message{Message: "Hi"}}
 		return req
@@ -55,9 +55,7 @@ func inMemoryMockCons(sender chan struct{}) (conn1, conn2 *connection.MockConn) 
 	return mockConn1, mockConn2
 }
 
-
-
-func TestManager_NotifyInMemory(t *testing.T)  {
+func TestManager_NotifyInMemory(t *testing.T) {
 	td := newTestData()
 	messageRepo := td.MockMessageRepo
 	convoRepo := td.MockConversationRepo
@@ -68,7 +66,7 @@ func TestManager_NotifyInMemory(t *testing.T)  {
 
 	convoRepo.GetConvo = func(conversationId string) (conversants []models.Conversant, e error) {
 		return []models.Conversant{
-			{Id: "a"} ,
+			{Id: "a"},
 		}, nil
 	}
 
@@ -91,23 +89,23 @@ func TestManager_NotifyInMemory(t *testing.T)  {
 		return sentChannel
 	}
 
-	sender <- struct {}{}
+	sender <- struct{}{}
 
 	select {
-	case <- sentChannel:
+	case <-sentChannel:
 		t.Log("passed")
-	case <- time.After(1 * time.Second):
+	case <-time.After(1 * time.Second):
 		t.Error("Message not recieved")
 	}
 }
 
-func TestManager_Leave(t *testing.T)  {
+func TestManager_Leave(t *testing.T) {
 	td := newTestData()
 	manager := NewManager(repositories.NewChatInteractor(td, td), td, td)
 
 	conn1 := makeConn("a")
 
-	closer := make(chan struct {})
+	closer := make(chan struct{})
 
 	conn1.Leaver = func() chan struct{} {
 		return closer
@@ -125,5 +123,3 @@ func TestManager_Leave(t *testing.T)  {
 		t.Error("conn didn't leave")
 	}
 }
-
-

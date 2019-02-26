@@ -13,8 +13,8 @@ func (*MessageRepository) CreateMessage(message models.Message) (*models.Message
 	panic("implement me")
 }
 
-func NewMessageRepository(db *sqlx.DB) *MessageRepository  {
+func NewMessageRepository(db *sqlx.DB) *MessageRepository {
 	return &MessageRepository{
-		db:db,
+		db: db,
 	}
 }

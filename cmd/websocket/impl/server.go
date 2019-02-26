@@ -25,7 +25,6 @@ func RunServer(m *manager.Manager) {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-
 func serveWs(manager *manager.Manager, writer http.ResponseWriter, request *http.Request) {
 	conn, err := upgrader.Upgrade(writer, request, nil)
 
@@ -38,5 +37,3 @@ func serveWs(manager *manager.Manager, writer http.ResponseWriter, request *http
 
 	manager.Join(newWsConn(conn))
 }
-
-

@@ -58,7 +58,6 @@ func (manager *Manager) Join(conn connection.Conn) {
 	manager.addConn(conn)
 }
 
-
 func (manager *Manager) addConn(conn connection.Conn) {
 	fmt.Println("joining")
 	manager.connectionMu.Lock()

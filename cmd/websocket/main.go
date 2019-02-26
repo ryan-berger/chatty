@@ -11,6 +11,7 @@ import (
 	"github.com/ryan-berger/chatty/repositories/postgres"
 	"os"
 )
+
 func GetDBString() string {
 	return fmt.Sprintf(
 		"host=%s database=%s user=%s password=%s sslmode=disable",
@@ -20,7 +21,7 @@ func GetDBString() string {
 		os.Getenv("POSTGRES_PASSWORD"))
 }
 
-func main()  {
+func main() {
 	db, err := sqlx.Open("postgres", GetDBString())
 
 	if err != nil {

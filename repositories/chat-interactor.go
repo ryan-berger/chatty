@@ -54,6 +54,6 @@ func (chat *ChatInteractor) GetConversants(conversationId string) ([]models.Conv
 func NewChatInteractor(messageRepo MessageRepo, conversationRepo ConversationRepo) *ChatInteractor {
 	return &ChatInteractor{
 		conversationRepo: conversationRepo,
-		messageRepo:messageRepo,
+		messageRepo:      messageRepo,
 	}
 }

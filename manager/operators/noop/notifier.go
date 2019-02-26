@@ -6,7 +6,6 @@ import (
 )
 
 type Notifier struct {
-
 }
 
 func (*Notifier) Notify(id string, message models.Message) error {
@@ -14,6 +13,6 @@ func (*Notifier) Notify(id string, message models.Message) error {
 	return nil
 }
 
-func NewNotifier() *Notifier  {
+func NewNotifier() *Notifier {
 	return &Notifier{}
 }

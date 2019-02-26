@@ -100,7 +100,7 @@ func (repo *ConversationRepository) RetrieveConversation(conversationId string, 
 	return &conversation, nil
 }
 
-func (repo *ConversationRepository) GetConversants(conversationId string) ([]models.Conversant, error)  {
+func (repo *ConversationRepository) GetConversants(conversationId string) ([]models.Conversant, error) {
 	var conversants []models.Conversant
 	err := repo.db.Select(&conversants, GETUSERSFROMCONVESRATION, &conversationId)
 	if err != nil {
@@ -110,8 +110,8 @@ func (repo *ConversationRepository) GetConversants(conversationId string) ([]mod
 	return conversants, nil
 }
 
-func NewConversationRepository(db *sqlx.DB) repositories.ConversationRepo  {
+func NewConversationRepository(db *sqlx.DB) repositories.ConversationRepo {
 	return &ConversationRepository{
-		db:db,
+		db: db,
 	}
 }
