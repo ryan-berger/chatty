@@ -9,6 +9,7 @@ import (
 type chatInteractor struct {
 	conversationRepo repositories.ConversationRepo
 	messageRepo      repositories.MessageRepo
+	conversantRepo   repositories.ConversantRepo
 }
 
 // Signifying an internal server error
@@ -53,9 +54,22 @@ func (chat *chatInteractor) GetConversants(conversationID string) ([]repositorie
 	return conversants, nil
 }
 
-func newChatInteractor(messageRepo repositories.MessageRepo, conversationRepo repositories.ConversationRepo) *chatInteractor {
+func (chat *chatInteractor) UpsertConvserant(conversant repositories.Conversant) (*repositories.Conversant, error) {
+	newConversant, err := chat.conversantRepo.UpdateOrCreate(conversant)
+
+	if err != nil {
+		return nil, err
+	}
+	return newConversant, nil
+}
+
+func newChatInteractor(
+	messageRepo repositories.MessageRepo,
+	conversationRepo repositories.ConversationRepo,
+	conversantRepo repositories.ConversantRepo) *chatInteractor {
 	return &chatInteractor{
 		conversationRepo: conversationRepo,
 		messageRepo:      messageRepo,
+		conversantRepo:   conversantRepo,
 	}
 }

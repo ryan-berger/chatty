@@ -4,8 +4,8 @@ package repositories
 // A conversant is not unique per connection, but is distinct
 // from a user as a Conversant is not organizationally dependent
 type Conversant struct {
-	ID   string
-	Name string
+	ID   string `json:"id",db:"id"`
+	Name string `json:"name",db:"name"`
 }
 
 // Message is an incoming message to be sent to all conversants

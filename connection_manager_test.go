@@ -1,6 +1,7 @@
 package chatty
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -42,60 +43,105 @@ func makeConn(id string) *connection.MockConn {
 	return mockConn
 }
 
-func inMemoryMockCons(sender chan struct{}) (conn1, conn2 *connection.MockConn) {
-	mockConn1 := makeConn("a")
-	mockConn2 := makeConn("b")
-
-	mockConn2.Request = func() chan connection.Request {
-		<-sender
-		req := make(chan connection.Request, 1)
-		req <- connection.Request{Type: connection.SendMessage, Data: repositories.Message{Message: "Hi"}}
-		return req
+func makeMockManager() *ConnectionManager {
+	return &ConnectionManager{
+		connections:  make(map[string]connection.Conn),
+		connectionMu: &sync.RWMutex{},
+		messageChan:  make(chan messageRequest, 10),
+		shutdownChan: make(chan struct{}, 1),
 	}
-
-	return mockConn1, mockConn2
 }
 
-func TestManager_NotifyInMemory(t *testing.T) {
-	td := newTestData()
-	messageRepo := td.MockMessageRepo
-	convoRepo := td.MockConversationRepo
+func TestConnectionManager_NotifyInMemory(t *testing.T) {
+	manager := makeMockManager()
+	manager.startup()
 
-	messageRepo.Create = func(message repositories.Message) (message2 *repositories.Message, e error) {
-		return &message, nil
+	m := &repositories.MockMessageRepo{
+		Create: func(message repositories.Message) (message2 *repositories.Message, e error) {
+			return nil, nil
+		},
 	}
 
-	convoRepo.GetConvo = func(conversationId string) (conversants []repositories.Conversant, e error) {
-		return []repositories.Conversant{
-			{ID: "a"},
-		}, nil
+	c := &repositories.MockConversationRepo{
+		GetConvo: func(conversationId string) (conversants []repositories.Conversant, e error) {
+			return []repositories.Conversant{
+				{ID: "b"},
+			}, nil
+		},
 	}
 
-	manager := NewManager(td, td, td, td)
+	manager.chatInteractor = newChatInteractor(m, c, nil)
 
-	sender := make(chan struct{})
-	conn1, conn2 := inMemoryMockCons(sender)
+	connA := makeConn("a")
+	connB := makeConn("b")
 
-	manager.addConn(conn1)
-	manager.addConn(conn2)
+	resp := make(chan connection.Response, 1)
 
-	if len(manager.connections) != 2 {
-		t.Error("didn't add connections")
+	connA.Resp = func() chan connection.Response {
+		return resp
 	}
 
-	sentChannel := make(chan connection.Response, 1)
+	manager.addConn(connA)
+	manager.addConn(connB)
 
-	conn2.Resp = func() chan connection.Response {
-		return sentChannel
-	}
-
-	sender <- struct{}{}
+	manager.sendMessage(connA, repositories.Message{ConversationID: "a", SenderID: "a"})
 
 	select {
-	case <-sentChannel:
-		t.Log("passed")
-	case <-time.After(1 * time.Second):
-		t.Error("Message not recieved")
+	case <-resp:
+		return
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Didn't receive message")
+	}
+}
+
+func TestConnectionManager_Notifier(t *testing.T) {
+	manager := makeMockManager()
+	manager.startup()
+
+	m := &repositories.MockMessageRepo{
+		Create: func(message repositories.Message) (message2 *repositories.Message, e error) {
+			return nil, nil
+		},
+	}
+
+	c := &repositories.MockConversationRepo{
+		GetConvo: func(conversationId string) (conversants []repositories.Conversant, e error) {
+			return []repositories.Conversant{
+				{ID: "b"},
+			}, nil
+		},
+	}
+	manager.chatInteractor = newChatInteractor(m, c, nil)
+
+	conn := makeConn("a")
+
+	notified := make(chan struct{}, 1)
+	requests := make(chan connection.Request)
+
+	conn.Request = func() chan connection.Request {
+		return requests
+	}
+
+	conn.Resp = func() chan connection.Response {
+		return make(chan connection.Response)
+	}
+
+	manager.notifier = &operators.MockNotifier{
+		SendNotification: func(id string, message repositories.Message) error {
+			notified <- struct{}{}
+			return nil
+		},
+	}
+
+	manager.addConn(conn)
+
+	requests <- connection.Request{Type: connection.SendMessage, Data: repositories.Message{SenderID: "a", ConversationID: "b"}}
+
+	select {
+	case <-notified:
+		return
+	case <-time.After(10 * time.Millisecond):
+		t.Error("didn't receive notification")
 	}
 }
 

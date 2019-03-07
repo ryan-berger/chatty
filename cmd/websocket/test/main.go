@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/net/websocket"
 	"sync"
+
+	"golang.org/x/net/websocket"
 )
 
 func main() {
 	wg := &sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		wg.Add(1)
 		go func() {
 			conn, err := websocket.Dial("ws://localhost:8080/ws", "", "http://localhost:8080")

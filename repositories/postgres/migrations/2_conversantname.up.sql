@@ -1,0 +1,3 @@
+ALTER TABLE conversant
+  ADD COLUMN name TEXT NOT NULL DEFAULT '',
+  DROP COLUMN external_id;

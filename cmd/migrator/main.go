@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang-migrate/migrate/v4"
+	"os"
+
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"os"
 )
 
-const MIGRATIONS_PATH = "file:///app/repositories/postgres/migrations"
+const MIGRATIONS_PATH = "file:///go/src/github.com/ryan-berger/chatty/repositories/postgres/migrations"
 
 func GetDBString() string {
 	return fmt.Sprintf(
