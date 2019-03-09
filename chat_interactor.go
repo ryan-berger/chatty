@@ -60,6 +60,7 @@ func (chat *chatInteractor) UpsertConvserant(conversant repositories.Conversant)
 	if err != nil {
 		return nil, err
 	}
+
 	return newConversant, nil
 }
 

@@ -32,6 +32,7 @@ type ConnectionManager struct {
 func NewManager(
 	messageRepo repositories.MessageRepo,
 	conversationRepo repositories.ConversationRepo,
+	conversantRepo repositories.ConversantRepo,
 	auther operators.Auther,
 	notifier operators.Notifier) *ConnectionManager {
 
@@ -41,7 +42,7 @@ func NewManager(
 		connections:    make(map[string]connection.Conn),
 		shutdownChan:   make(chan struct{}),
 		messageChan:    make(chan messageRequest, numWorkers),
-		chatInteractor: &chatInteractor{messageRepo: messageRepo, conversationRepo: conversationRepo},
+		chatInteractor: newChatInteractor(messageRepo, conversationRepo, conversantRepo),
 		notifier:       notifier,
 	}
 	manager.startup()
