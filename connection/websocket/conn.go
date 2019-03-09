@@ -24,7 +24,7 @@ var stringToType = map[requestType]connection.RequestType{
 	createConversation: connection.CreateConversation,
 }
 
-type Auth func(map[string]string) bool
+type Auth func(map[string]string) (repositories.Conversant, error)
 
 // Conn is a websocket implementation of the Conn interface
 type Conn struct {
@@ -121,11 +121,14 @@ func (conn Conn) Authorize() error {
 		conn.conn.Close()
 		return err
 	}
+	conversant, err := conn.auth(creds)
 
-	if !conn.auth(creds) {
+	if err != nil {
 		conn.conn.Close()
 		return errors.New("not authorized")
 	}
+
+	conn.conversant = conversant
 
 	go conn.pumpIn()
 	go conn.pumpOut()
