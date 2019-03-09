@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"errors"
 	"time"
 
 	"github.com/ryan-berger/chatty/repositories"
@@ -23,6 +24,8 @@ var stringToType = map[requestType]connection.RequestType{
 	createConversation: connection.CreateConversation,
 }
 
+type Auth func(map[string]string) bool
+
 // Conn is a websocket implementation of the Conn interface
 type Conn struct {
 	conn       *websocket.Conn
@@ -30,6 +33,7 @@ type Conn struct {
 	leave      chan struct{}
 	requests   chan connection.Request
 	responses  chan connection.Response
+	auth       Auth
 }
 
 type wsRequest struct {
@@ -49,13 +53,14 @@ func wsRequestToRequest(request wsRequest) connection.Request {
 }
 
 // NewWebsocketConn is a factory for a websocket connection
-func NewWebsocketConn(conn *websocket.Conn) Conn {
+func NewWebsocketConn(conn *websocket.Conn, auth Auth) Conn {
 	wsConn := Conn{
 		conversant: repositories.Conversant{ID: uuid.New()},
 		conn:       conn,
 		leave:      make(chan struct{}, 1),
 		requests:   make(chan connection.Request),
 		responses:  make(chan connection.Response),
+		auth:       auth,
 	}
 	return wsConn
 }
@@ -109,12 +114,17 @@ func (conn Conn) Authorize() error {
 		conn.conn.Close()
 		return err
 	}
-	var test map[string]string
-	err = conn.conn.ReadJSON(&test)
+	var creds map[string]string
+	err = conn.conn.ReadJSON(&creds)
 
 	if err != nil {
 		conn.conn.Close()
 		return err
+	}
+
+	if !conn.auth(creds) {
+		conn.conn.Close()
+		return errors.New("not authorized")
 	}
 
 	go conn.pumpIn()
