@@ -133,8 +133,6 @@ func (manager *ConnectionManager) startMessageWorker() {
 			manager.createMessage(message)
 		case <-manager.shutdownChan:
 			return
-		default:
-			continue
 		}
 	}
 }
