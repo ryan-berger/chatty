@@ -6,9 +6,9 @@ import (
 )
 
 const updateOrCreateConversant = `
-INSERT INTO conversant (id, "name") VALUES (:id, :name) 
+INSERT INTO conversant (id, name) VALUES (:id, :name) 
 ON CONFLICT (id) DO 
-  UPDATE SET "name" = :name
+  UPDATE SET name = :name
 `
 
 type ConversantRepository struct {
@@ -22,7 +22,7 @@ func NewConversantRepository(db *sqlx.DB) *ConversantRepository {
 }
 
 func (repo *ConversantRepository) UpdateOrCreate(conversant repositories.Conversant) (*repositories.Conversant, error) {
-	_, err := repo.db.Exec(updateOrCreateConversant)
+	_, err := repo.db.NamedExec(updateOrCreateConversant, &conversant)
 
 	if err != nil {
 		return nil, err
