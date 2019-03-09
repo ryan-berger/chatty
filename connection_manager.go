@@ -68,6 +68,7 @@ func (manager *ConnectionManager) Join(conn connection.Conn) {
 	_, err := manager.chatInteractor.UpsertConvserant(conn.GetConversant())
 
 	if err != nil {
+		fmt.Println(err)
 		conn.Leave() <- struct{}{}
 		return
 	}
