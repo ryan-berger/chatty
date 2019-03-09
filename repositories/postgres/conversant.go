@@ -15,6 +15,12 @@ type ConversantRepository struct {
 	db *sqlx.DB
 }
 
+func NewConversantRepository(db *sqlx.DB) *ConversantRepository {
+	return &ConversantRepository{
+		db: db,
+	}
+}
+
 func (repo *ConversantRepository) UpdateOrCreate(conversant repositories.Conversant) (*repositories.Conversant, error) {
 	_, err := repo.db.Exec(updateOrCreateConversant)
 
