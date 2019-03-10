@@ -92,6 +92,10 @@ func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 	for {
 		select {
 		case command := <-conn.Requests():
+			if command.Data == nil {
+				manager.sendErr(conn, "no request body")
+				continue
+			}
 			switch command.Type {
 			case connection.SendMessage:
 				manager.sendMessage(conn, command.Data.(repositories.Message))

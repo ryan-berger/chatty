@@ -99,7 +99,7 @@ func (conn Conn) send(response connection.Response) {
 
 func (conn Conn) receive() {
 	var req wsRequest
-	conn.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 	err := conn.conn.ReadJSON(&req)
 	if err != nil {
 		conn.leave <- struct{}{}
