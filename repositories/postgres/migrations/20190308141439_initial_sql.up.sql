@@ -2,14 +2,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE conversation
 (
-  id     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id     UUID PRIMARY KEY,
   name   TEXT             DEFAULT NULL,
   direct BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE conversant
 (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY,
   external_id UUID UNIQUE NOT NULL
 );
 
@@ -22,7 +22,7 @@ CREATE TABLE conversant_conversation
 
 CREATE TABLE chat_message
 (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID PRIMARY KEY,
   message      TEXT                         NOT NULL,
   sender       UUID REFERENCES conversant   NOT NULL,
   conversation UUID REFERENCES conversation NOT NULL

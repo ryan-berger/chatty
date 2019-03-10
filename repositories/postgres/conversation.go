@@ -18,7 +18,7 @@ INSERT INTO conversant_conversation(conversation_id, conversant_id) VALUES ($1, 
 const getUsersFromConversation = `
 SELECT
     id,
-	external_id
+    name
 FROM conversant_conversation cc
 LEFT JOIN conversant c on cc.conversant_id = c.id
 WHERE conversation_id = $1
