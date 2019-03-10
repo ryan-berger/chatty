@@ -21,7 +21,7 @@ type messageRequest struct {
 type ConnectionManager struct {
 	auther         operators.Auther
 	connectionMu   *sync.RWMutex
-	connections    map[string]connection.Conn
+	connections    map[string][]connection.Conn
 	messageChan    chan messageRequest
 	shutdownChan   chan struct{}
 	chatInteractor *chatInteractor
@@ -79,7 +79,8 @@ func (manager *ConnectionManager) Join(conn connection.Conn) {
 func (manager *ConnectionManager) addConn(conn connection.Conn) {
 	fmt.Println("joining")
 	manager.connectionMu.Lock()
-	manager.connections[conn.GetConversant().ID] = conn
+	connections := manager.connections[conn.GetConversant().ID]
+	manager.connections[conn.GetConversant().ID] = append(connections, conn)
 	go manager.handleConnection(conn)
 	manager.connectionMu.Unlock()
 }
@@ -166,7 +167,9 @@ func (manager *ConnectionManager) notifyRecipients(conversants []repositories.Co
 	manager.connectionMu.RLock()
 	for _, conversant := range conversants {
 		if val, ok := manager.connections[conversant.ID]; ok {
-			manager.sendNewMessage(val, message)
+			for _, conn := range val {
+				manager.sendNewMessage(conn, message)
+			}
 		} else {
 			manager.notifier.Notify(conversant.ID, message)
 		}

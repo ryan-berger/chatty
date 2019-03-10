@@ -1,6 +1,7 @@
-package websocket
+package implementations
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -37,17 +38,35 @@ type Conn struct {
 
 type wsRequest struct {
 	RequestType requestType
-	Data        interface{}
+	Data        json.RawMessage
 }
 
-func wsRequestToRequest(request wsRequest) connection.Request {
-	req := connection.Request{}
-
-	if _, ok := stringToType[request.RequestType]; !ok {
-		return req
+func wsRequestType(reqType requestType) connection.RequestType {
+	if val, ok := stringToType[reqType]; ok {
+		return val
 	}
 
-	req.Type = stringToType[request.RequestType]
+	return connection.RequestError
+}
+
+func wsRequestData(data []byte) connection.Request {
+	var request wsRequest
+	json.Unmarshal(data, &request)
+	req := connection.Request{Type: wsRequestType(request.RequestType)}
+
+	switch req.Type {
+	case connection.SendMessage:
+		messageRequest := connection.SendMessageRequest{}
+		json.Unmarshal(request.Data, &messageRequest)
+		req.Data = messageRequest
+	case connection.CreateConversation:
+		conversationRequest := connection.CreateConversationRequest{}
+		json.Unmarshal(request.Data, &conversationRequest)
+		req.Data = conversationRequest
+	case connection.RequestError:
+		req.Data = nil
+	}
+
 	return req
 }
 
@@ -97,13 +116,11 @@ func (conn *Conn) send(response connection.Response) {
 }
 
 func (conn *Conn) receive() {
-	var req wsRequest
-
-	err := conn.conn.ReadJSON(&req)
+	_, message, err := conn.conn.ReadMessage()
 	if err != nil {
 		conn.leave <- struct{}{}
 	}
-	conn.requests <- wsRequestToRequest(req)
+	conn.requests <- wsRequestData(message)
 }
 
 // Authorize satisfies the Conn interface

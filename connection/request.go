@@ -6,32 +6,22 @@ type ResponseType int
 const (
 	SendMessage RequestType = iota
 	CreateConversation
+	RequestError
 )
 
-const (
-	Error ResponseType = iota
-	NewMessage
-	NewConversation
-	MessageSent
-)
-
-type Request struct {
-	Type RequestType
-	Data interface{}
-}
-
-type Response struct {
-	Type ResponseType
-	Data interface{}
-}
-
-type ResponseError struct {
-	Error string
-}
-
-func NewResponseError(error string) Response {
-	return Response{
-		Type: Error,
-		Data: ResponseError{Error: error},
+type (
+	Request struct {
+		Type RequestType `json:"type"`
+		Data interface{} `json:"data"`
 	}
-}
+
+	CreateConversationRequest struct {
+		Name        string   `json:"name"`
+		Conversants []string `json:"conversants"`
+	}
+
+	SendMessageRequest struct {
+		Message        string `json:"message"`
+		ConversationId string `json:"conversationId"`
+	}
+)
