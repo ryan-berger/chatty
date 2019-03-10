@@ -63,7 +63,7 @@ func NewWebsocketConn(conn *websocket.Conn, auth Auth) *Conn {
 	return wsConn
 }
 
-func (conn Conn) pumpIn() {
+func (conn *Conn) pumpIn() {
 	conn.conn.SetReadDeadline(time.Time{})
 	for {
 		select {
@@ -76,7 +76,7 @@ func (conn Conn) pumpIn() {
 	}
 }
 
-func (conn Conn) pumpOut() {
+func (conn *Conn) pumpOut() {
 	for {
 		select {
 		case <-conn.leave:
@@ -88,7 +88,7 @@ func (conn Conn) pumpOut() {
 	}
 }
 
-func (conn Conn) send(response connection.Response) {
+func (conn *Conn) send(response connection.Response) {
 	conn.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	err := conn.conn.WriteJSON(&response)
 	if err != nil {
@@ -96,7 +96,7 @@ func (conn Conn) send(response connection.Response) {
 	}
 }
 
-func (conn Conn) receive() {
+func (conn *Conn) receive() {
 	var req wsRequest
 
 	err := conn.conn.ReadJSON(&req)
@@ -107,7 +107,7 @@ func (conn Conn) receive() {
 }
 
 // Authorize satisfies the Conn interface
-func (conn Conn) Authorize() error {
+func (conn *Conn) Authorize() error {
 	err := conn.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		conn.conn.Close()
@@ -135,21 +135,21 @@ func (conn Conn) Authorize() error {
 }
 
 // GetConversant satisfies the Conn interface
-func (conn Conn) GetConversant() repositories.Conversant {
+func (conn *Conn) GetConversant() repositories.Conversant {
 	return conn.conversant
 }
 
 // Requests satisfies the Conn interface
-func (conn Conn) Requests() chan connection.Request {
+func (conn *Conn) Requests() chan connection.Request {
 	return conn.requests
 }
 
 // Response satisfies the Conn interface
-func (conn Conn) Response() chan connection.Response {
+func (conn *Conn) Response() chan connection.Response {
 	return conn.responses
 }
 
 // Leave satisfies the Conn interface
-func (conn Conn) Leave() chan struct{} {
+func (conn *Conn) Leave() chan struct{} {
 	return conn.leave
 }
