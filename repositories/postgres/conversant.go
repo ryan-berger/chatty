@@ -6,9 +6,9 @@ import (
 )
 
 const updateOrCreateConversant = `
-INSERT INTO conversant (id, "name") VALUES (:id, :name) 
+INSERT INTO conversant (id, display_name) VALUES (:id, :display_name) 
 ON CONFLICT (id) DO 
-  UPDATE SET "name" = :name
+  UPDATE SET display_name = :name
 `
 
 type ConversantRepository struct {
