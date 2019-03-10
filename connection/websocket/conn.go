@@ -66,6 +66,7 @@ func NewWebsocketConn(conn *websocket.Conn, auth Auth) Conn {
 }
 
 func (conn Conn) pumpIn() {
+	conn.conn.SetReadDeadline(time.Time{})
 	for {
 		select {
 		case <-conn.leave:

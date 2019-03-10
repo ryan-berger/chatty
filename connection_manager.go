@@ -84,10 +84,6 @@ func (manager *ConnectionManager) addConn(conn connection.Conn) {
 	manager.connectionMu.Unlock()
 }
 
-func (manager *ConnectionManager) closeConn(conn connection.Conn) {
-	conn.Leave() <- struct{}{}
-}
-
 func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 	for {
 		select {
