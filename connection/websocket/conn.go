@@ -9,7 +9,6 @@ import (
 	"github.com/ryan-berger/chatty/connection"
 
 	"github.com/gorilla/websocket"
-	"github.com/pborman/uuid"
 )
 
 type requestType string
@@ -55,12 +54,11 @@ func wsRequestToRequest(request wsRequest) connection.Request {
 // NewWebsocketConn is a factory for a websocket connection
 func NewWebsocketConn(conn *websocket.Conn, auth Auth) Conn {
 	wsConn := Conn{
-		conversant: repositories.Conversant{ID: uuid.New()},
-		conn:       conn,
-		leave:      make(chan struct{}, 1),
-		requests:   make(chan connection.Request),
-		responses:  make(chan connection.Response),
-		auth:       auth,
+		conn:      conn,
+		leave:     make(chan struct{}, 1),
+		requests:  make(chan connection.Request),
+		responses: make(chan connection.Response),
+		auth:      auth,
 	}
 	return wsConn
 }
