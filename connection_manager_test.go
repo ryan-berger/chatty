@@ -147,7 +147,7 @@ func TestConnectionManager_Notifier(t *testing.T) {
 
 func TestManager_Leave(t *testing.T) {
 	td := newTestData()
-	manager := NewManager(td, td, td, td)
+	manager := NewManager(td, td, nil, td, td)
 
 	conn1 := makeConn("a")
 

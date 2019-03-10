@@ -52,8 +52,8 @@ func wsRequestToRequest(request wsRequest) connection.Request {
 }
 
 // NewWebsocketConn is a factory for a websocket connection
-func NewWebsocketConn(conn *websocket.Conn, auth Auth) Conn {
-	wsConn := Conn{
+func NewWebsocketConn(conn *websocket.Conn, auth Auth) *Conn {
+	wsConn := &Conn{
 		conn:      conn,
 		leave:     make(chan struct{}, 1),
 		requests:  make(chan connection.Request),
