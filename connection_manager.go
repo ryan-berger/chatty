@@ -39,7 +39,7 @@ func NewManager(
 	manager := &ConnectionManager{
 		auther:         auther,
 		connectionMu:   &sync.RWMutex{},
-		connections:    make(map[string]connection.Conn),
+		connections:    make(map[string][]connection.Conn),
 		shutdownChan:   make(chan struct{}),
 		messageChan:    make(chan messageRequest, numWorkers),
 		chatInteractor: newChatInteractor(messageRepo, conversationRepo, conversantRepo),
@@ -100,11 +100,29 @@ func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 				manager.createConversation(conn, command.Data.(repositories.Conversation))
 			}
 		case <-conn.Leave():
-			manager.connectionMu.Lock()
-			delete(manager.connections, conn.GetConversant().ID)
-			manager.connectionMu.Unlock()
+
 			return
 		}
+	}
+}
+
+func (manager *ConnectionManager) removeConn(id string) {
+	manager.connectionMu.Lock()
+	defer manager.connectionMu.Unlock()
+
+	for i, clientConn := range manager.connections[id] {
+		connArray := manager.connections[id]
+		if id == clientConn.GetConversant().ID {
+			fmt.Println("before: ", connArray)
+			connArray[i] = connArray[len(connArray)-1]
+			fmt.Println("after: ", connArray[:len(connArray)-1])
+			manager.connections[id] = connArray[:len(connArray)-1]
+
+		}
+	}
+
+	if len(manager.connections[id]) == 0 {
+		delete(manager.connections, id)
 	}
 }
 
