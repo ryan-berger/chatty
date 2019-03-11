@@ -3,6 +3,8 @@ package chatty
 import (
 	"errors"
 
+	"github.com/pborman/uuid"
+
 	"github.com/ryan-berger/chatty/repositories"
 )
 
@@ -44,7 +46,9 @@ func (chat *chatInteractor) GetConversation(id string, offset, limit int) (*repo
 }
 
 func (chat *chatInteractor) SendMessage(message string, sender string, conversationId string) (*repositories.Message, error) {
+
 	msg := repositories.Message{
+		ID:             uuid.New(),
 		Message:        message,
 		SenderID:       sender,
 		ConversationID: conversationId,

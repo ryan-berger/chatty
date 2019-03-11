@@ -11,18 +11,18 @@ type Conversant struct {
 // Message is an incoming message to be sent to all conversants
 // within the given conversation
 type Message struct {
-	ID             string `db:"id"`
-	SenderID       string `db:"sender_id"`
-	Message        string `db:"message"`
-	ConversationID string `db:"conversation_id"`
+	ID             string `json:"id"db:"id"`
+	SenderID       string `json:"senderId"db:"sender_id"`
+	Message        string `json:"message"db:"message"`
+	ConversationID string `json:"conversationId"db:"conversation_id"`
 }
 
 // Conversation is a group of conversants, and a list of messages
 // allowing the manager to make sure everyone is notified of a message
 type Conversation struct {
-	ID          string `db:"id"`
-	Name        string `db:"name"`
-	Conversants []Conversant
-	Messages    []Message
-	Direct      bool `db:"direct"`
+	ID          string       `json:"id"db:"id"`
+	Name        string       `json:"id"db:"name"`
+	Conversants []Conversant `json:"conversants"`
+	Messages    []Message    `json:"messages"`
+	Direct      bool         `json:"direct"db:"direct"`
 }

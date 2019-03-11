@@ -68,7 +68,7 @@ func (manager *ConnectionManager) Join(conn connection.Conn) {
 	_, err := manager.chatInteractor.UpsertConvserant(conn.GetConversant())
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Join_Upsert", err)
 		conn.Leave() <- struct{}{}
 		return
 	}
@@ -143,6 +143,7 @@ func (manager *ConnectionManager) createConversation(sender connection.Conn, con
 		CreateConversation(sender.GetConversant().ID, conversation.Name, conversation.Conversants)
 
 	if err != nil {
+		fmt.Println("createConversation", err)
 		manager.sendErr(sender, "unable to create conversation")
 	}
 
@@ -167,6 +168,7 @@ func (manager *ConnectionManager) createMessage(message messageRequest) {
 		SendMessage(messageData.Message, message.conn.GetConversant().ID, messageData.ConversationID)
 
 	if err != nil {
+		fmt.Println("createMessage_SendMessage", err)
 		manager.sendErr(message.conn, "couldn't send message")
 		return
 	}
@@ -174,6 +176,7 @@ func (manager *ConnectionManager) createMessage(message messageRequest) {
 	conversants, err := manager.chatInteractor.GetConversants(messageData.ConversationID)
 
 	if err != nil {
+		fmt.Println("createMessage_GetConversants", err)
 		return
 	}
 
