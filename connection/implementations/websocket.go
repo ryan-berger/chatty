@@ -28,7 +28,7 @@ type Auth func(map[string]string) (repositories.Conversant, error)
 
 // Conn is a websocket implementation of the Conn interface
 type Conn struct {
-	conn       *websocket.Conn
+	conn       WebsocketConn
 	conversant repositories.Conversant
 	leave      chan struct{}
 	requests   chan connection.Request
@@ -36,9 +36,18 @@ type Conn struct {
 	auth       Auth
 }
 
+type WebsocketConn interface {
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
+	ReadMessage() (int, []byte, error)
+	WriteJSON(interface{}) error
+	ReadJSON(interface{}) error
+	Close() error
+}
+
 type wsRequest struct {
-	RequestType requestType
-	Data        json.RawMessage
+	RequestType requestType     `json:"type"`
+	Data        json.RawMessage `json:"data"`
 }
 
 func wsRequestType(reqType requestType) connection.RequestType {
@@ -53,7 +62,6 @@ func wsRequestData(data []byte) connection.Request {
 	var request wsRequest
 	json.Unmarshal(data, &request)
 	req := connection.Request{Type: wsRequestType(request.RequestType)}
-
 	switch req.Type {
 	case connection.SendMessage:
 		messageRequest := connection.SendMessageRequest{}

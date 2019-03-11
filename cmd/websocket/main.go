@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/gorilla/websocket"
-	ws "github.com/ryan-berger/chatty/connection/websocket"
+	ws "github.com/ryan-berger/chatty/connection/implementations"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -45,7 +45,7 @@ func main() {
 	messageRepo := postgres.NewMessageRepository(db)
 
 	notifier := noop.NewNotifier()
-	man := chatty.NewManager(messageRepo, conversationRepo, nil, notifier)
+	man := chatty.NewManager(messageRepo, conversationRepo, nil, nil, notifier)
 
 	http.HandleFunc("/", pprof.Index)
 	http.HandleFunc("/ws", func(writer http.ResponseWriter, request *http.Request) {
@@ -64,5 +64,5 @@ func serveWs(manager *chatty.ConnectionManager, writer http.ResponseWriter, requ
 		return
 	}
 
-	manager.Join(ws.NewWebsocketConn(conn))
+	manager.Join(ws.NewWebsocketConn(conn, nil))
 }
