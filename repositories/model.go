@@ -21,6 +21,7 @@ type Message struct {
 // allowing the manager to make sure everyone is notified of a message
 type Conversation struct {
 	ID          string `db:"id"`
+	Name        string `db:"name"`
 	Conversants []Conversant
 	Messages    []Message
 	Direct      bool `db:"direct"`

@@ -14,7 +14,7 @@ var numWorkers = 40
 
 type messageRequest struct {
 	conn connection.Conn
-	data repositories.Message
+	data connection.SendMessageRequest
 }
 
 // ConnectionManager is the main connection manager struct that handles all chat connections
@@ -95,12 +95,12 @@ func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 			}
 			switch command.Type {
 			case connection.SendMessage:
-				manager.sendMessage(conn, command.Data.(repositories.Message))
+				manager.sendMessage(conn, command.Data.(connection.SendMessageRequest))
 			case connection.CreateConversation:
-				manager.createConversation(conn, command.Data.(repositories.Conversation))
+				manager.createConversation(conn, command.Data.(connection.CreateConversationRequest))
 			}
 		case <-conn.Leave():
-
+			manager.removeConn(conn.GetConversant().ID)
 			return
 		}
 	}
@@ -126,7 +126,7 @@ func (manager *ConnectionManager) removeConn(id string) {
 	}
 }
 
-func (manager *ConnectionManager) sendMessage(conn connection.Conn, m repositories.Message) {
+func (manager *ConnectionManager) sendMessage(conn connection.Conn, m connection.SendMessageRequest) {
 	for {
 		select {
 		case manager.messageChan <- messageRequest{conn: conn, data: m}:
@@ -137,8 +137,10 @@ func (manager *ConnectionManager) sendMessage(conn connection.Conn, m repositori
 	}
 }
 
-func (manager *ConnectionManager) createConversation(sender connection.Conn, conversation repositories.Conversation) {
-	newConversation, err := manager.chatInteractor.CreateConversation(conversation)
+func (manager *ConnectionManager) createConversation(sender connection.Conn, conversation connection.CreateConversationRequest) {
+	newConversation, err := manager.
+		chatInteractor.
+		CreateConversation(sender.GetConversant().ID, conversation.Name, conversation.Conversants)
 
 	if err != nil {
 		manager.sendErr(sender, "unable to create conversation")
@@ -159,26 +161,23 @@ func (manager *ConnectionManager) startMessageWorker() {
 }
 
 func (manager *ConnectionManager) createMessage(message messageRequest) {
-	if message.conn.GetConversant().ID != message.data.SenderID {
-		manager.sendErr(message.conn, "can't send message for someone else")
-	}
-
-	_, err := manager.
+	messageData := message.data
+	newMessage, err := manager.
 		chatInteractor.
-		SendMessage(message.data)
+		SendMessage(messageData.Message, message.conn.GetConversant().ID, messageData.ConversationID)
 
 	if err != nil {
 		manager.sendErr(message.conn, "couldn't send message")
 		return
 	}
 
-	conversants, err := manager.chatInteractor.GetConversants(message.data.ConversationID)
+	conversants, err := manager.chatInteractor.GetConversants(messageData.ConversationID)
 
 	if err != nil {
 		return
 	}
 
-	manager.notifyRecipients(conversants, message.data)
+	manager.notifyRecipients(conversants, *newMessage)
 }
 
 func (manager *ConnectionManager) notifyRecipients(conversants []repositories.Conversant, message repositories.Message) {

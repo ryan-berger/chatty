@@ -22,6 +22,6 @@ type (
 
 	SendMessageRequest struct {
 		Message        string `json:"message"`
-		ConversationId string `json:"conversationId"`
+		ConversationID string `json:"conversationId"`
 	}
 )

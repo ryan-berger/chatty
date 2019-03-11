@@ -15,8 +15,17 @@ type chatInteractor struct {
 // Signifying an internal server error
 var errInternal = errors.New("err: internal server error")
 
-func (chat *chatInteractor) CreateConversation(conversation repositories.Conversation) (*repositories.Conversation, error) {
-	convo, err := chat.conversationRepo.CreateConversation(conversation)
+func (chat *chatInteractor) CreateConversation(creatorID string, name string, conversants []string) (*repositories.Conversation, error) {
+	newConversation := repositories.Conversation{}
+
+	conversants = append(conversants, creatorID)
+
+	for _, conversantID := range conversants {
+		newConversation.Conversants = append(newConversation.Conversants, repositories.Conversant{ID: conversantID})
+	}
+	newConversation.Name = name
+
+	convo, err := chat.conversationRepo.CreateConversation(newConversation)
 	if err != nil {
 		return nil, err
 	}
@@ -34,8 +43,14 @@ func (chat *chatInteractor) GetConversation(id string, offset, limit int) (*repo
 	return conversation, nil
 }
 
-func (chat *chatInteractor) SendMessage(message repositories.Message) (*repositories.Message, error) {
-	newMessage, err := chat.messageRepo.CreateMessage(message)
+func (chat *chatInteractor) SendMessage(message string, sender string, conversationId string) (*repositories.Message, error) {
+	msg := repositories.Message{
+		Message:        message,
+		SenderID:       sender,
+		ConversationID: conversationId,
+	}
+
+	newMessage, err := chat.messageRepo.CreateMessage(msg)
 
 	if err != nil {
 		return nil, errInternal
