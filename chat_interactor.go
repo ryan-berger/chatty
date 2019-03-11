@@ -1,8 +1,6 @@
 package chatty
 
 import (
-	"errors"
-
 	"github.com/pborman/uuid"
 
 	"github.com/ryan-berger/chatty/repositories"
@@ -13,9 +11,6 @@ type chatInteractor struct {
 	messageRepo      repositories.MessageRepo
 	conversantRepo   repositories.ConversantRepo
 }
-
-// Signifying an internal server error
-var errInternal = errors.New("err: internal server error")
 
 func (chat *chatInteractor) CreateConversation(creatorID string, name string, conversants []string) (*repositories.Conversation, error) {
 	newConversation := repositories.Conversation{}
@@ -39,7 +34,7 @@ func (chat *chatInteractor) GetConversation(id string, offset, limit int) (*repo
 	conversation, err := chat.conversationRepo.RetrieveConversation(id, offset, limit)
 
 	if err != nil {
-		return nil, errInternal
+		return nil, err
 	}
 
 	return conversation, nil
@@ -57,7 +52,7 @@ func (chat *chatInteractor) SendMessage(message string, sender string, conversat
 	newMessage, err := chat.messageRepo.CreateMessage(msg)
 
 	if err != nil {
-		return nil, errInternal
+		return nil, err
 	}
 
 	return newMessage, nil
@@ -67,7 +62,7 @@ func (chat *chatInteractor) GetConversants(conversationID string) ([]repositorie
 	conversants, err := chat.conversationRepo.GetConversants(conversationID)
 
 	if err != nil {
-		return nil, errInternal
+		return nil, err
 	}
 
 	return conversants, nil
