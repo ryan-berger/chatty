@@ -8,20 +8,28 @@ import (
 	"github.com/ryan-berger/chatty/repositories"
 
 	"github.com/ryan-berger/chatty/connection"
-
-	"github.com/gorilla/websocket"
 )
 
 type requestType string
+type responseType string
 
 const (
-	sendMessage        requestType = "sendMessage"
-	createConversation requestType = "createConversation"
+	sendMessage        requestType  = "sendMessage"
+	createConversation requestType  = "createConversation"
+	newMessage         responseType = "newMessage"
+	newConversation    responseType = "newConversation"
+	responseError      responseType = "error"
 )
 
 var stringToType = map[requestType]connection.RequestType{
 	sendMessage:        connection.SendMessage,
 	createConversation: connection.CreateConversation,
+}
+
+var typeToString = map[connection.ResponseType]responseType{
+	connection.NewMessage:      newMessage,
+	connection.NewConversation: newConversation,
+	connection.Error:           responseError,
 }
 
 type Auth func(map[string]string) (repositories.Conversant, error)
@@ -41,13 +49,17 @@ type WebsocketConn interface {
 	SetWriteDeadline(time.Time) error
 	ReadMessage() (int, []byte, error)
 	WriteJSON(interface{}) error
-	ReadJSON(interface{}) error
 	Close() error
 }
 
 type wsRequest struct {
 	RequestType requestType     `json:"type"`
 	Data        json.RawMessage `json:"data"`
+}
+
+type wsResponse struct {
+	ResponseType responseType `json:"type"`
+	Data         interface{}  `json:"data"`
 }
 
 func wsRequestType(reqType requestType) connection.RequestType {
@@ -79,7 +91,7 @@ func wsRequestData(data []byte) connection.Request {
 }
 
 // NewWebsocketConn is a factory for a websocket connection
-func NewWebsocketConn(conn *websocket.Conn, auth Auth) *Conn {
+func NewWebsocketConn(conn WebsocketConn, auth Auth) *Conn {
 	wsConn := &Conn{
 		conn:      conn,
 		leave:     make(chan struct{}, 1),
@@ -110,12 +122,12 @@ func (conn *Conn) pumpOut() {
 			conn.conn.Close()
 			return
 		case response := <-conn.responses:
-			conn.send(response)
+			conn.send(wsResponse{ResponseType: typeToString[response.Type], Data: response.Data})
 		}
 	}
 }
 
-func (conn *Conn) send(response connection.Response) {
+func (conn *Conn) send(response wsResponse) {
 	conn.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	err := conn.conn.WriteJSON(&response)
 	if err != nil {
@@ -139,7 +151,8 @@ func (conn *Conn) Authorize() error {
 		return err
 	}
 	var creds map[string]string
-	err = conn.conn.ReadJSON(&creds)
+	_, body, err := conn.conn.ReadMessage()
+	json.Unmarshal(body, &creds)
 
 	if err != nil {
 		conn.conn.Close()

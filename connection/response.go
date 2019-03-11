@@ -6,7 +6,6 @@ const (
 	Error ResponseType = iota
 	NewMessage
 	NewConversation
-	MessageSent
 )
 
 type (
