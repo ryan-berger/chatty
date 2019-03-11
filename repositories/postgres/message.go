@@ -8,7 +8,7 @@ import (
 
 const createMessage = `
 INSERT INTO  chat_message(id, message, sender, conversation) 
-VALUES (:id, :message, :sender_id, :conversation)
+VALUES (:id, :message, :sender_id, :conversation_id)
 `
 
 // MessageRepository is a MessageRepo implementation that uses Postgres to store messages
