@@ -3,6 +3,9 @@ package chatty
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ryan-berger/chatty/repositories"
 
@@ -77,10 +80,10 @@ func (manager *ConnectionManager) Join(conn connection.Conn) {
 }
 
 func (manager *ConnectionManager) addConn(conn connection.Conn) {
-	fmt.Println("joining")
 	manager.connectionMu.Lock()
 	connections := manager.connections[conn.GetConversant().ID]
 	manager.connections[conn.GetConversant().ID] = append(connections, conn)
+	recover()
 	go manager.handleConnection(conn)
 	manager.connectionMu.Unlock()
 }
@@ -93,11 +96,17 @@ func (manager *ConnectionManager) handleConnection(conn connection.Conn) {
 				manager.sendErr(conn, "no request body")
 				continue
 			}
+			var messageErr error
 			switch command.Type {
 			case connection.SendMessage:
-				manager.sendMessage(conn, command.Data.(connection.SendMessageRequest))
+				messageErr = manager.sendMessage(conn, command.Data.(connection.SendMessageRequest))
 			case connection.CreateConversation:
-				manager.createConversation(conn, command.Data.(connection.CreateConversationRequest))
+				messageErr = manager.createConversation(conn, command.Data.(connection.CreateConversationRequest))
+			case connection.RetrieveConversation:
+				manager.retrieveConversation(conn, command.Data.(connection.RetrieveConversationRequest))
+			}
+			if messageErr != nil {
+				manager.sendErr(conn, messageErr.Error())
 			}
 		case <-conn.Leave():
 			manager.removeConn(conn.GetConversant().ID)
@@ -113,9 +122,7 @@ func (manager *ConnectionManager) removeConn(id string) {
 	for i, clientConn := range manager.connections[id] {
 		connArray := manager.connections[id]
 		if id == clientConn.GetConversant().ID {
-			fmt.Println("before: ", connArray)
 			connArray[i] = connArray[len(connArray)-1]
-			fmt.Println("after: ", connArray[:len(connArray)-1])
 			manager.connections[id] = connArray[:len(connArray)-1]
 
 		}
@@ -126,28 +133,43 @@ func (manager *ConnectionManager) removeConn(id string) {
 	}
 }
 
-func (manager *ConnectionManager) sendMessage(conn connection.Conn, m connection.SendMessageRequest) {
-	for {
-		select {
-		case manager.messageChan <- messageRequest{conn: conn, data: m}:
-			return
-		default:
-			continue
-		}
+func (manager *ConnectionManager) sendMessage(conn connection.Conn, m connection.SendMessageRequest) error {
+	select {
+	case manager.messageChan <- messageRequest{conn: conn, data: m}:
+		return nil
+	case <-time.After(10 * time.Second):
+		return errors.New("could not send message")
 	}
 }
 
-func (manager *ConnectionManager) createConversation(sender connection.Conn, conversation connection.CreateConversationRequest) {
+func (manager *ConnectionManager) createConversation(sender connection.Conn, conversation connection.CreateConversationRequest) error {
+	conversation.SenderID = sender.GetConversant().ID
+
 	newConversation, err := manager.
 		chatInteractor.
-		CreateConversation(sender.GetConversant().ID, conversation.Name, conversation.Conversants)
+		CreateConversation(conversation)
 
 	if err != nil {
-		fmt.Println("createConversation", err)
-		manager.sendErr(sender, "unable to create conversation")
+		fmt.Println("createConversation_CreateConversation", err)
+		return errors.New("unable to create conversation")
 	}
 
 	sender.Response() <- connection.Response{Type: connection.NewConversation, Data: *newConversation}
+	return nil
+}
+
+func (manager *ConnectionManager) retrieveConversation(sender connection.Conn, request connection.RetrieveConversationRequest) error {
+	conversation, err := manager.
+		chatInteractor.
+		GetConversation(request)
+
+	if err != nil {
+		fmt.Println("retrieveConversation_GetConversation", err)
+		return errors.New("unable to get conversation")
+	}
+
+	sender.Response() <- connection.Response{Type: connection.ReturnConversation, Data: *conversation}
+	return nil
 }
 
 func (manager *ConnectionManager) startMessageWorker() {
@@ -161,26 +183,28 @@ func (manager *ConnectionManager) startMessageWorker() {
 	}
 }
 
-func (manager *ConnectionManager) createMessage(message messageRequest) {
-	messageData := message.data
+func (manager *ConnectionManager) createMessage(message messageRequest) error {
+	data := message.data
+	data.SenderID = message.conn.GetConversant().ID
+
 	newMessage, err := manager.
 		chatInteractor.
-		SendMessage(messageData.Message, message.conn.GetConversant().ID, messageData.ConversationID)
+		SendMessage(data)
 
 	if err != nil {
 		fmt.Println("createMessage_SendMessage", err)
-		manager.sendErr(message.conn, "couldn't send message")
-		return
+		return errors.New("couldn't send message")
 	}
 
-	conversants, err := manager.chatInteractor.GetConversants(messageData.ConversationID)
+	conversants, err := manager.chatInteractor.GetConversants(data.ConversationID)
 
 	if err != nil {
 		fmt.Println("createMessage_GetConversants", err)
-		return
+		return nil
 	}
 
 	manager.notifyRecipients(conversants, *newMessage)
+	return nil
 }
 
 func (manager *ConnectionManager) notifyRecipients(conversants []repositories.Conversant, message repositories.Message) {

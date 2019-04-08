@@ -1,7 +1,12 @@
 package connection
 
-import "github.com/ryan-berger/chatty/repositories"
+import (
+	"github.com/ryan-berger/chatty/repositories"
+)
 
+// Conn is the generic connection interface that allows
+// multiple connections to talk to each other over any
+// protocol
 type Conn interface {
 	Authorize() error
 	GetConversant() repositories.Conversant

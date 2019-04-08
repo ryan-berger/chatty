@@ -6,12 +6,13 @@ const (
 	Error ResponseType = iota
 	NewMessage
 	NewConversation
+	ReturnConversation
 )
 
 type (
 	Response struct {
-		Type ResponseType
-		Data interface{}
+		Type ResponseType `json:"type"`
+		Data interface{}  `json:"data"`
 	}
 
 	NewMessageResponse struct {
@@ -19,7 +20,7 @@ type (
 	}
 
 	ResponseError struct {
-		Error string
+		Error string `json:"error"`
 	}
 )
 

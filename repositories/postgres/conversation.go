@@ -49,7 +49,7 @@ func (repo *ConversationRepository) CreateConversation(conversation repositories
 	}
 
 	conversation.ID = uuid.New()
-	conversation.Direct = len(conversation.Conversants) == 2
+
 	_, err = tx.NamedExec(createConversation, &conversation)
 	if err != nil {
 		tx.Rollback()

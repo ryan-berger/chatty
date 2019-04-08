@@ -14,3 +14,13 @@ type MockMessageRepo struct {
 func (mock *MockMessageRepo) CreateMessage(message Message) (*Message, error) {
 	return mock.Create(message)
 }
+
+// DefaultMockRepo creates a mock repo that will return
+// any data given to it without errors
+func DefaultMockMessageRepo() MessageRepo {
+	return &MockMessageRepo{
+		Create: func(message Message) (*Message, error) {
+			return &message, nil
+		},
+	}
+}

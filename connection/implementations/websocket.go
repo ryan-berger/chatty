@@ -14,22 +14,26 @@ type requestType string
 type responseType string
 
 const (
-	sendMessage        requestType  = "sendMessage"
-	createConversation requestType  = "createConversation"
-	newMessage         responseType = "newMessage"
-	newConversation    responseType = "newConversation"
-	responseError      responseType = "error"
+	sendMessage          requestType  = "sendMessage"
+	createConversation   requestType  = "createConversation"
+	retrieveConversation requestType  = "retrieveConversation"
+	newMessage           responseType = "newMessage"
+	newConversation      responseType = "newConversation"
+	returnConversation   responseType = "returnConversation"
+	responseError        responseType = "error"
 )
 
 var stringToType = map[requestType]connection.RequestType{
-	sendMessage:        connection.SendMessage,
-	createConversation: connection.CreateConversation,
+	sendMessage:          connection.SendMessage,
+	createConversation:   connection.CreateConversation,
+	retrieveConversation: connection.RetrieveConversation,
 }
 
 var typeToString = map[connection.ResponseType]responseType{
-	connection.NewMessage:      newMessage,
-	connection.NewConversation: newConversation,
-	connection.Error:           responseError,
+	connection.NewMessage:         newMessage,
+	connection.NewConversation:    newConversation,
+	connection.Error:              responseError,
+	connection.ReturnConversation: returnConversation,
 }
 
 type Auth func(map[string]string) (repositories.Conversant, error)
@@ -83,6 +87,10 @@ func wsRequestData(data []byte) connection.Request {
 		conversationRequest := connection.CreateConversationRequest{}
 		json.Unmarshal(request.Data, &conversationRequest)
 		req.Data = conversationRequest
+	case connection.RetrieveConversation:
+		retrieveConversationRequest := connection.RetrieveConversationRequest{}
+		json.Unmarshal(request.Data, &retrieveConversationRequest)
+		req.Data = retrieveConversationRequest
 	case connection.RequestError:
 		req.Data = nil
 	}

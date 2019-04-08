@@ -2,6 +2,7 @@ package chatty
 
 import (
 	"github.com/pborman/uuid"
+	"github.com/ryan-berger/chatty/connection"
 
 	"github.com/ryan-berger/chatty/repositories"
 )
@@ -12,15 +13,21 @@ type chatInteractor struct {
 	conversantRepo   repositories.ConversantRepo
 }
 
-func (chat *chatInteractor) CreateConversation(creatorID string, name string, conversants []string) (*repositories.Conversation, error) {
+func (chat *chatInteractor) CreateConversation(request connection.CreateConversationRequest) (*repositories.Conversation, error) {
+	request.Conversants = append(request.Conversants, request.SenderID)
+
+	err := request.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	newConversation := repositories.Conversation{}
-
-	conversants = append(conversants, creatorID)
-
-	for _, conversantID := range conversants {
+	for _, conversantID := range request.Conversants {
 		newConversation.Conversants = append(newConversation.Conversants, repositories.Conversant{ID: conversantID})
 	}
-	newConversation.Name = name
+
+	newConversation.Name = request.Name
+	newConversation.Direct = len(newConversation.Conversants) == 2
 
 	convo, err := chat.conversationRepo.CreateConversation(newConversation)
 	if err != nil {
@@ -30,8 +37,13 @@ func (chat *chatInteractor) CreateConversation(creatorID string, name string, co
 	return convo, nil
 }
 
-func (chat *chatInteractor) GetConversation(id string, offset, limit int) (*repositories.Conversation, error) {
-	conversation, err := chat.conversationRepo.RetrieveConversation(id, offset, limit)
+func (chat *chatInteractor) GetConversation(request connection.RetrieveConversationRequest) (*repositories.Conversation, error) {
+	err := request.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	conversation, err := chat.conversationRepo.RetrieveConversation(request.ConversationID, request.Limit, request.Offset)
 
 	if err != nil {
 		return nil, err
@@ -40,13 +52,19 @@ func (chat *chatInteractor) GetConversation(id string, offset, limit int) (*repo
 	return conversation, nil
 }
 
-func (chat *chatInteractor) SendMessage(message string, sender string, conversationId string) (*repositories.Message, error) {
+func (chat *chatInteractor) SendMessage(message connection.SendMessageRequest) (*repositories.Message, error) {
+
+	err := message.Validate()
+
+	if err != nil {
+		return nil, err
+	}
 
 	msg := repositories.Message{
 		ID:             uuid.New(),
-		Message:        message,
-		SenderID:       sender,
-		ConversationID: conversationId,
+		Message:        message.Message,
+		SenderID:       message.SenderID,
+		ConversationID: message.ConversationID,
 	}
 
 	newMessage, err := chat.messageRepo.CreateMessage(msg)

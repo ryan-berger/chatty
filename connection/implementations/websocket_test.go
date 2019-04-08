@@ -16,27 +16,33 @@ type testConn struct {
 	readChan  chan []byte
 	writeChan chan []byte
 	isClosed  bool
+	readErr   func() error
+	writeErr  func() error
 }
 
-func (*testConn) SetReadDeadline(time.Time) error {
+func (conn *testConn) SetReadDeadline(time.Time) error {
 	return nil
 }
 
-func (*testConn) SetWriteDeadline(time.Time) error {
+func (conn *testConn) SetWriteDeadline(time.Time) error {
 	return nil
 }
 
 func (conn *testConn) ReadMessage() (int, []byte, error) {
-	return 0, <-conn.readChan, nil
+	read := <-conn.readChan
+	if conn.readErr() != nil {
+		return 0, nil, conn.readErr()
+	}
+	return 0, read, nil
 }
 
 func (conn *testConn) WriteJSON(in interface{}) error {
+	if conn.writeErr() != nil {
+		return conn.writeErr()
+	}
+
 	b, _ := json.Marshal(in)
 	conn.writeChan <- b
-	return nil
-}
-
-func (*testConn) ReadJSON(interface{}) error {
 	return nil
 }
 
@@ -61,6 +67,11 @@ var requests = []struct {
 		reqType: connection.SendMessage,
 	},
 	{
+		req:     []byte(`{"type": "retrieveConversation"}`),
+		reqData: connection.RetrieveConversationRequest{},
+		reqType: connection.RetrieveConversation,
+	},
+	{
 		req:     []byte(`{"type": "asdfasdfasdf"}`),
 		reqData: nil,
 		reqType: connection.RequestError,
@@ -80,6 +91,10 @@ var responses = []struct {
 		resp:     []byte(`{"type":"newConversation","data":null}`),
 	},
 	{
+		respType: connection.ReturnConversation,
+		resp:     []byte(`{"type":"returnConversation","data":null}`),
+	},
+	{
 		respType: connection.Error,
 		resp:     []byte(`{"type":"error","data":null}`),
 	},
@@ -92,6 +107,9 @@ func TestConn_Requests(t *testing.T) {
 	conn := Conn{
 		conn: &testConn{
 			readChan: readChan,
+			readErr: func() error {
+				return nil
+			},
 		},
 		leave:    make(chan struct{}, 1),
 		requests: requestChan,
@@ -133,6 +151,9 @@ func TestConn_Responses(t *testing.T) {
 	conn := Conn{
 		conn: &testConn{
 			writeChan: writeChan,
+			writeErr: func() error {
+				return nil
+			},
 		},
 		leave:     make(chan struct{}, 1),
 		responses: responseChan,
@@ -158,6 +179,9 @@ func TestConn_Authorize(t *testing.T) {
 
 	testConn := &testConn{
 		readChan: readChan,
+		readErr: func() error {
+			return nil
+		},
 	}
 
 	conn := NewWebsocketConn(testConn, func(strings map[string]string) (conversant repositories.Conversant, e error) {
@@ -176,6 +200,9 @@ func TestConn_GetConversant(t *testing.T) {
 
 	testConn := &testConn{
 		readChan: readChan,
+		readErr: func() error {
+			return nil
+		},
 	}
 
 	conn := NewWebsocketConn(testConn, func(strings map[string]string) (conversant repositories.Conversant, e error) {
@@ -187,5 +214,56 @@ func TestConn_GetConversant(t *testing.T) {
 
 	if conn.GetConversant().ID != "testID" {
 		t.Fatalf("expected that %s would be testID", conn.GetConversant().ID)
+	}
+}
+
+func TestConn_LeaveWriteErr(t *testing.T) {
+	responseChan := make(chan connection.Response)
+
+	testConn := &testConn{
+		writeErr: func() error {
+			return errors.New("test err")
+		},
+	}
+
+	conn := Conn{
+		conn:      testConn,
+		responses: responseChan,
+		leave:     make(chan struct{}, 1),
+	}
+
+	go conn.pumpOut()
+
+	responseChan <- connection.Response{Type: connection.NewConversation}
+
+	if !testConn.isClosed {
+		t.Fatal("should be closed")
+	}
+
+}
+
+func TestConn_LeaveReadErr(t *testing.T) {
+	readChan := make(chan []byte)
+
+	testConn := &testConn{
+		readChan: readChan,
+		readErr: func() error {
+			return errors.New("test err")
+		},
+	}
+
+	conn := Conn{
+		conn:  testConn,
+		leave: make(chan struct{}, 1),
+	}
+
+	go conn.pumpIn()
+	readChan <- []byte(`test`)
+
+	select {
+	case <-conn.Leave():
+		break
+	case <-time.After(10 * time.Millisecond):
+		t.Fatalf("didn't close")
 	}
 }

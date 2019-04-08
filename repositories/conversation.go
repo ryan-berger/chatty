@@ -28,3 +28,12 @@ func (m *MockConversationRepo) RetrieveConversation(conversationID string, limit
 func (m *MockConversationRepo) GetConversants(conversationID string) ([]Conversant, error) {
 	return m.GetConvo(conversationID)
 }
+
+// NewDefaultMockRepo creates a mock repo that will return
+func DefaultMockConversationRepo() ConversationRepo {
+	return &MockConversationRepo{
+		CreateConvo: func(conversation Conversation) (*Conversation, error) {
+			return &conversation, nil
+		},
+	}
+}
